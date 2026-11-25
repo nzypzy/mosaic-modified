@@ -1,0 +1,661 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #fffcfb;
+  --color-text-primary: #181d1e;
+  --color-brand-blue: #003366;
+  --color-brand-gold: #c9a84c;
+  --color-brand-gold-hover: #b9973f;
+  --color-brand-blue-light: rgba(0, 51, 102, 0.12);
+  --color-gray-text: #53616a;
+  --color-panel-bg: #fffcfb;
+  --color-mosaic-warm-white: #fffcfb;
+  --color-mosaic-gray: #181d1e;
+  --color-mosaic-deep-ink: #0c0c0e;
+  --mosaic-radius: 0px;
+
+  --color-vscode-editor: #1f1f1f;
+  --color-vscode-sidebar: #181818;
+  --color-vscode-activity: #181818;
+  --color-vscode-panel: #181818;
+  --color-vscode-raised: #2b2b2b;
+  --color-vscode-border: #2b2b2b;
+  --color-vscode-text: #cccccc;
+  --color-vscode-muted: #9d9d9d;
+  --color-vscode-icon: #868686;
+  --color-vscode-accent: #0078d4;
+  --color-vscode-selection: #04395e;
+  --color-vscode-hover: #2a2d2e;
+  --color-vscode-status: #181818;
+  --color-vscode-command: #222222;
+  
+  --font-display: "Segoe UI", "Segoe UI Variable", system-ui, sans-serif;
+  --font-serif: "Segoe UI", "Segoe UI Variable", system-ui, sans-serif;
+  --font-ui: "Segoe UI", "Segoe UI Variable", system-ui, sans-serif;
+  --font-sans: "Segoe UI", "Segoe UI Variable", system-ui, sans-serif;
+  --font-impact: "Segoe UI", "Segoe UI Variable", system-ui, sans-serif;
+  --font-bebas: "Segoe UI", "Segoe UI Variable", system-ui, sans-serif;
+  --font-mono: Consolas, "Courier New", monospace;
+}
+
+:root {
+  --mosaic-motion-standard: 250ms;
+  --mosaic-motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html,
+body {
+  font-family: "Segoe UI", "Segoe UI Variable", system-ui, sans-serif;
+}
+
+body :where(button, input, textarea, select) {
+  font-family: inherit;
+}
+
+body :where(h1, h2, h3, h4) {
+  font-style: normal;
+}
+
+.echo-chat-docked {
+  padding-right: clamp(360px, 34vw, 540px);
+}
+
+.echo-chat-panel {
+  container-name: echo-chat-panel;
+  container-type: inline-size;
+}
+
+@container echo-chat-panel (max-width: 430px) {
+  .echo-chat-title-subtitle,
+  .echo-chat-action-label {
+    display: none !important;
+  }
+
+  .echo-chat-header {
+    gap: 0.25rem !important;
+    padding-inline: 0.5rem !important;
+  }
+
+  .echo-chat-header-actions {
+    gap: 0 !important;
+  }
+
+  .echo-chat-action {
+    padding-inline: 0.375rem !important;
+  }
+}
+
+@container echo-chat-panel (max-width: 400px) {
+  .echo-chat-title {
+    font-size: 0.8rem !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .echo-chat-docked {
+    padding-right: 15vw;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  summary,
+  [role="button"] {
+    transition-duration: var(--mosaic-motion-standard);
+    transition-timing-function: var(--mosaic-motion-ease);
+  }
+
+  [role="dialog"],
+  [role="alertdialog"] {
+    animation: mosaic-dialog-enter var(--mosaic-motion-standard) var(--mosaic-motion-ease) both;
+  }
+}
+
+@keyframes mosaic-dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mosaic-sync-progress {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(310%); }
+}
+
+/* VS Code typography and readable secondary text for the workbench preview. */
+:root:not([data-theme="light"]) .vscode-workbench {
+  --vscode-editor-background: var(--color-vscode-editor);
+  --vscode-panel-background: var(--color-vscode-panel);
+  --vscode-input-background: var(--color-vscode-command);
+  --vscode-border: var(--color-vscode-border);
+  --vscode-foreground: var(--color-vscode-text);
+  --vscode-muted: var(--color-vscode-muted);
+  --vscode-accent: var(--color-vscode-accent);
+  color-scheme: dark;
+  background-color: var(--color-vscode-editor);
+  color: var(--vscode-foreground);
+  font-family: "Segoe UI", "Segoe UI Variable", system-ui, sans-serif;
+  font-size: 13px;
+}
+
+:root:not([data-theme="light"]) .mosaic-topbar {
+  background: #181818;
+  border-color: #2b2b2b;
+  color: #cccccc;
+}
+
+:root:not([data-theme="light"]) .mosaic-topbar input {
+  background: #252526 !important;
+  border-color: #3c3c3c !important;
+  color: #cccccc !important;
+}
+
+:root:not([data-theme="light"]) .mosaic-topbar input::placeholder {
+  color: #989898 !important;
+}
+
+:root:not([data-theme="light"]) .mosaic-topbar kbd {
+  background: #222222 !important;
+  border-color: #3c3c3c !important;
+  color: #9d9d9d !important;
+}
+
+/* Apply VS Code's compact, flat control treatment throughout the desktop app. */
+:root:not([data-theme="light"]) .vscode-workbench button {
+  appearance: none;
+  border-radius: 2px;
+  box-shadow: none;
+  text-shadow: none;
+  transition-duration: 120ms !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench button:not(:disabled):not([class*="hover:bg-"]):not([class*="hover:bg["]):hover {
+  background-color: var(--color-vscode-hover);
+}
+
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-[#FFFCFB]"],
+:root:not([data-theme="light"]) .vscode-workbench button[class~="bg-white"],
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-white/"],
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-slate-50"],
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-slate-100"],
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-gray-50"],
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-gray-100"],
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-blue-50"],
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-blue-100"],
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-amber-50"],
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-yellow-50"],
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-red-50"],
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-emerald-50"],
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-green-50"] {
+  background-color: #2b2b2b !important;
+  color: var(--color-vscode-text) !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench button:hover:not(:disabled)[class*="hover:bg-blue-"],
+:root:not([data-theme="light"]) .vscode-workbench button:hover:not(:disabled)[class*="hover:bg-[#FFFCFB]"],
+:root:not([data-theme="light"]) .vscode-workbench button:hover:not(:disabled)[class*="hover:bg-[#EDF3F8]"],
+:root:not([data-theme="light"]) .vscode-workbench button:hover:not(:disabled)[class*="hover:bg-amber-"],
+:root:not([data-theme="light"]) .vscode-workbench button:hover:not(:disabled)[class*="hover:bg-yellow-"],
+:root:not([data-theme="light"]) .vscode-workbench button:hover:not(:disabled)[class*="hover:bg-red-50"],
+:root:not([data-theme="light"]) .vscode-workbench button:hover:not(:disabled)[class*="hover:bg-emerald-50"],
+:root:not([data-theme="light"]) .vscode-workbench button:hover:not(:disabled)[class*="hover:bg-green-50"] {
+  background-color: #3c3c3c !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-[#003366]"],
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-brand-blue"],
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-blue-600"] {
+  background-color: var(--color-vscode-accent) !important;
+  color: #ffffff !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-red-600"] {
+  background-color: #f85149 !important;
+  color: #ffffff !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-emerald-600"],
+:root:not([data-theme="light"]) .vscode-workbench button[class*="bg-green-600"] {
+  background-color: #2ea043 !important;
+  color: #ffffff !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench button:active:not(:disabled) {
+  filter: brightness(0.9);
+}
+
+:root:not([data-theme="light"]) .vscode-workbench :where(button, input, textarea, select) {
+  font-family: inherit;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench select,
+:root:not([data-theme="light"]) .vscode-workbench select option {
+  color: #e7e7e7 !important;
+  background-color: #252526 !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench .notebook-priority-badge {
+  color: #ffe08a !important;
+  background-color: #3b2f10 !important;
+  border-color: #d6a900 !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench button.notebook-highlight-button {
+  color: #1f1f1f !important;
+  background-color: #ffe08a !important;
+  border-color: #d6a900 !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench button.notebook-highlight-button:hover {
+  color: #1f1f1f !important;
+  background-color: #ffecb3 !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench :where(.font-mono, code, kbd) {
+  font-family: Consolas, "Courier New", monospace;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench :where(h1, h2, h3) {
+  color: #e7e7e7;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench [class*="bg-[#FFFCFB]"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="bg-[#FAF9F7]"],
+:root:not([data-theme="light"]) .vscode-workbench [class~="bg-white"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="bg-bg-primary"] {
+  background-color: var(--vscode-editor-background) !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench [class*="bg-white/"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="bg-slate-50"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="bg-slate-100"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="bg-slate-200"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="bg-gray-50"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="bg-gray-100"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="bg-gray-200"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="bg-[#F"] {
+  background-color: var(--vscode-panel-background) !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench [class*="bg-[#003366]"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="bg-brand-blue"] {
+  background-color: #0078d4 !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-[#003366]"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-brand-blue"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-[#1b1d1e]"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-[#181D1E]"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-slate-800"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-slate-700"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-slate-600"] {
+  color: var(--vscode-foreground) !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-gray-"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-slate-"] {
+  color: var(--vscode-muted) !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-gray-900"] {
+  color: var(--vscode-foreground) !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench [class*="border-[#C9"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="border-[#003366]"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="border-slate-"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="border-gray-"] {
+  border-color: #3c3c3c !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench .mosaic-flat-card {
+  box-shadow: none !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench .mosaic-flat-card:not([data-drop-target="true"]):not([data-state-accent="true"]) {
+  border-color: #303030 !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench .mosaic-flat-card:focus-within {
+  border-color: var(--color-vscode-accent) !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench .mosaic-flat-card[data-completed="false"] {
+  background-color: var(--color-vscode-editor) !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench .mosaic-flat-card[data-completed="true"] {
+  background-color: #252526 !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench .mosaic-flat-card[data-completed="false"]:hover:not([data-drop-target="true"]) {
+  border-color: #454545 !important;
+  background-color: var(--color-vscode-hover) !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench .notetaker-workspace [class*="border-[#D9E1EA]"] {
+  border-color: #3c3c3c !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-[#C9"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-amber-"] {
+  color: #4fc1ff !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench :where(button, a, input, textarea, select):focus-visible {
+  outline: 1px solid #007fd4;
+  outline-offset: 1px;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-[#7f"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-[#77"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-[#84"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-[#85"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-[#8b"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-[#92"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-[#96"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-[#9b"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-[#9c"] {
+  color: var(--vscode-muted) !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench :is(button, input, textarea, select):disabled {
+  color: var(--vscode-muted) !important;
+  opacity: 0.55 !important;
+  cursor: not-allowed;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench :where(button, input, textarea, select) {
+  border-radius: 2px;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench [class*="font-serif"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="font-display"] {
+  font-family: "Segoe UI", "Segoe UI Variable", system-ui, sans-serif !important;
+  font-style: normal !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench :is(h1, h2, h3, h4) {
+  color: var(--color-vscode-text);
+  font-family: "Segoe UI", "Segoe UI Variable", system-ui, sans-serif;
+  font-style: normal;
+  font-weight: 500;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench h1 {
+  font-size: 1.35rem;
+  line-height: 1.6rem;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench h2 {
+  font-size: 1.1rem;
+  line-height: 1.4rem;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench [class*="rounded-"] {
+  border-radius: 2px !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench [class*="rounded-full"] {
+  border-radius: 9999px !important;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench :where(button, a, input, textarea, select):focus-visible {
+  outline: 1px solid var(--color-vscode-accent);
+  outline-offset: 1px;
+}
+
+:root:not([data-theme="light"]) .vscode-workbench ::selection {
+  color: white;
+  background: var(--color-vscode-selection);
+}
+
+:root:not([data-theme="light"]) .codex-chat {
+  --chat-bg: #1e1e1e;
+  --chat-panel: #252526;
+  --chat-raised: #2d2d30;
+  --chat-border: #3c3c3c;
+  --chat-text: #cccccc;
+  --chat-muted: #a0a0a0;
+  --chat-accent: #75beff;
+  background: var(--chat-bg) !important;
+  color: var(--chat-text);
+  font-family: "Segoe UI", "Segoe UI Variable", system-ui, sans-serif;
+}
+
+:root:not([data-theme="light"]) .codex-chat :where(button, input, textarea, select) {
+  font-family: inherit;
+}
+
+:root:not([data-theme="light"]) .codex-chat [class*="bg-[#FFFCFB]"],
+:root:not([data-theme="light"]) .codex-chat [class~="bg-white"],
+:root:not([data-theme="light"]) .codex-chat [class*="bg-white/"] {
+  background-color: var(--chat-bg) !important;
+}
+
+:root:not([data-theme="light"]) .codex-chat [class*="bg-[#003366]"] {
+  background-color: var(--chat-raised) !important;
+}
+
+:root:not([data-theme="light"]) .codex-chat [class*="text-[#003366]"] {
+  color: var(--chat-accent) !important;
+}
+
+:root:not([data-theme="light"]) .codex-chat [class*="text-[#181D1E]"],
+:root:not([data-theme="light"]) .codex-chat [class*="text-slate-600"],
+:root:not([data-theme="light"]) .codex-chat [class*="text-slate-700"] {
+  color: var(--chat-text) !important;
+}
+
+:root:not([data-theme="light"]) .codex-chat [class*="text-slate-400"],
+:root:not([data-theme="light"]) .codex-chat [class*="text-slate-500"] {
+  color: var(--chat-muted) !important;
+}
+
+:root:not([data-theme="light"]) .codex-chat [class*="text-[#858585]"],
+:root:not([data-theme="light"]) .codex-chat [class*="text-[#8b"],
+:root:not([data-theme="light"]) .codex-chat [class*="text-[#9b"] {
+  color: #a6a6a6 !important;
+}
+
+:root:not([data-theme="light"]) .codex-chat [class*="border-[#003366]"],
+:root:not([data-theme="light"]) .codex-chat [class*="border-[#C9A84C]"],
+:root:not([data-theme="light"]) .codex-chat [class*="border-slate-"],
+:root:not([data-theme="light"]) .codex-chat [class*="border-gray-"] {
+  border-color: var(--chat-border) !important;
+}
+
+:root:not([data-theme="light"]) .codex-chat :where(button, a, input, textarea, select):focus-visible {
+  outline: 1px solid #0078d4;
+  outline-offset: 1px;
+}
+
+:root:not([data-theme="light"]) .codex-chat form:focus-within {
+  border-color: #0078d4 !important;
+}
+
+.contracts-pdf-text-layer {
+  position: absolute;
+  inset: 0 auto auto 0;
+  overflow: hidden;
+  line-height: 1;
+  pointer-events: none;
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+  --min-font-size: 1;
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+}
+
+.contracts-pdf-text-layer span {
+  position: absolute;
+  color: transparent;
+  white-space: pre;
+  transform-origin: 0% 0%;
+  user-select: none;
+}
+
+.contracts-pdf-text-layer.selectable {
+  pointer-events: auto;
+  overflow: visible;
+}
+
+.contracts-pdf-text-layer.selectable span {
+  user-select: text;
+  cursor: text;
+}
+
+@media print {
+  .contracts-comparison-toolbar,
+  .contracts-pdf-toolbar,
+  .contracts-diff-rail {
+    display: none !important;
+  }
+
+  [aria-label="Earlier version PDF"],
+  [aria-label="Later version PDF"] {
+    break-inside: avoid;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+}
+
+.contracts-pdf-text-layer > :not(.markedContent),
+.contracts-pdf-text-layer .markedContent span:not(.markedContent) {
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+
+.mosaic-sync-progress-track {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  overflow: hidden;
+  background: rgb(201 168 76 / 20%);
+}
+
+.mosaic-sync-progress-bar {
+  display: block;
+  width: 28%;
+  height: 100%;
+  background: #c9a84c;
+  animation: mosaic-sync-progress 1.1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mosaic-sync-progress-bar { animation: none; transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Sleek custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 51, 102, 0.22);
+  border-radius: 0px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(201, 168, 76, 0.75);
+}
+
+/* Hide scrollbar utility while maintaining scroll behavior */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.calendar-timeline-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 51, 102, 0.14) transparent;
+}
+.calendar-timeline-scroll::-webkit-scrollbar {
+  height: 4px;
+}
+.calendar-timeline-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.calendar-timeline-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 51, 102, 0.14);
+  border-radius: 9999px;
+}
+.calendar-timeline-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 51, 102, 0.26);
+}
+
+@layer base {
+  body {
+    @apply bg-bg-primary text-text-primary font-sans antialiased;
+    background-color: #fffcfb;
+    color: #181d1e;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif text-brand-blue font-semibold italic tracking-wide;
+    font-family: var(--font-display);
+  }
+}
+
+@layer components {
+  .ba-rich-editor:empty::before {
+    content: attr(data-placeholder);
+    color: rgb(148 163 184);
+    pointer-events: none;
+  }
+
+  .panel {
+    @apply bg-panel-bg rounded-none border border-brand-blue-light p-6 mb-4 shadow-[0_4px_20px_rgba(0,51,102,0.06)];
+  }
+  
+  .btn-primary {
+    @apply bg-[#003366] text-[#FFFCFB] border border-[#003366] rounded-none font-sans font-bold text-xs tracking-widest uppercase px-6 py-3 transition-all duration-300 hover:bg-[#C9A84C] hover:border-[#C9A84C] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#003366] shadow-none;
+  }
+  
+  .btn-outline {
+    @apply bg-transparent text-brand-blue border border-brand-blue rounded-none font-sans font-bold text-xs tracking-widest uppercase px-6 py-3 transition-all duration-300 hover:bg-[#003366] hover:text-[#FFFCFB] disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-brand-blue;
+  }
+
+  .playfair-label {
+    @apply font-serif italic text-brand-blue text-2xl block mb-2 border-b border-brand-blue-light pb-3;
+  }
+  
+  .section-caption {
+    @apply text-gray-text text-sm mb-4;
+  }
+}

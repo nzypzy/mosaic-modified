@@ -1,0 +1,45 @@
+# Dependencies
+**/node_modules/
+
+# Next.js build output
+**/.next/
+**/next-env.d.ts
+**/out/
+**/dist/
+**/build/
+output/generated/
+outputs/generated/
+
+# Supabase CLI state
+supabase/.temp/
+
+# Environment files
+.env
+.env*.local
+
+# Gemini / Antigravity metadata
+.gemini/
+
+# IDE & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+*.key
+*.pem
+auth.json
+
+# Local-only notes (company context, never push)
+CLAUDE.local.md
+
+# Mosaic dev-mode build output and TypeScript cache
+**/.next-mosaic-dev-*/
+**/.tsconfig-mosaic-dev-*.json
+*.tsbuildinfo
+
+# Generated reports (may contain usage data)
+artifacts/
+
+# The original author's development log (his hosting details; out of date for this copy). Kept locally only.
+handoff.md
