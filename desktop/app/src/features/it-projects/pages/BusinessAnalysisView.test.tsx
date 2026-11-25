@@ -4,6 +4,9 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { normalizeBAState } from "@/features/it-projects/lib/business-analysis";
 import { BusinessAnalysisView } from "./BusinessAnalysisView";
 
+// The screen uses Claude for requirement suggestions; these tests do not exercise AI, so a stub is enough.
+vi.mock("@/features/ask-echo/components/EchoAI", () => ({ useEchoAI: () => ({ runStructured: vi.fn(), isWorking: false }) }));
+
 const workspace = normalizeBAState({
   projects: [{
     id: "project-1", name: "Mosaic Core", description: "Core platform", requirements: [{
@@ -63,6 +66,18 @@ describe("IT Projects workspace", () => {
       "Dashboard", "Product Backlog", "Sprint Backlog", "RTM", "System Design and Architecture", "End to End Process", "Deployment", "Reports",
     ]);
     expect(screen.getByRole("heading", { name: "Project timeline" })).toBeTruthy();
+  });
+
+  it("switches an existing project to General and back without losing its data", async () => {
+    const tablist = within(await openProject());
+    fireEvent.change(screen.getByLabelText("Project type"), { target: { value: "general" } });
+    expect(tablist.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Overview", "Tasks", "Reports"]);
+    expect(screen.getByText("Initiation")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect((savedState as { projects: Array<{ template: string; requirements: unknown[] }> }).projects[0].template).toBe("general"));
+    expect((savedState as { projects: Array<{ requirements: unknown[] }> }).projects[0].requirements).toHaveLength(1);
+    fireEvent.change(screen.getByLabelText("Project type"), { target: { value: "dev" } });
+    expect(tablist.getAllByRole("tab")[1].textContent).toBe("Product Backlog");
   });
 
   it("keeps a useful list and card view available across all eight sections", async () => {

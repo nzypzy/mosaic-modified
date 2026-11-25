@@ -1,20 +1,42 @@
 // @vitest-environment jsdom
 import React from "react";
-import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { EchoAIProvider } from "./EchoAI";
 import { UniversalEchoDrawer } from "./UniversalEchoDrawer";
 
-vi.mock("@/lib/api", () => ({ askEcho: vi.fn().mockResolvedValue({ answer: "Alex owns the lease follow-up.", confidence: "supported", sources: [{ sourceId: "meeting:m1:item:i1", meetingId: "m1", meetingTitle: "Leasing review", meetingDate: "2026-09-01", topic: "Renewal", excerpt: "Alex will send the lease." }], followUps: ["When is it due?"] }) }));
+afterEach(cleanup);
+// jsdom has no scrollIntoView; the chat scrolls to its newest message with it.
+Element.prototype.scrollIntoView = vi.fn();
+
+// The drawer is a resizable dock around the Claude chat (EchoAI). Outside the desktop app there is
+// no Claude bridge, so the chat explains that instead of offering a prompt.
+function renderDrawer(onClose = vi.fn()) {
+  render(<EchoAIProvider><UniversalEchoDrawer isOpen onClose={onClose} meetings={[]} /></EchoAIProvider>);
+  return onClose;
+}
 
 describe("UniversalEchoDrawer", () => {
-  it("shows a casual greeting and grounded sources after a question", async () => {
-    render(<UniversalEchoDrawer isOpen onClose={() => {}} meetings={[]} />);
-    expect(screen.getByText(/Hi — I’m Echo/)).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Message Ask Echo"), { target: { value: "Who owns the lease?" } });
-    fireEvent.click(screen.getByLabelText("Send message"));
-    await waitFor(() => expect(screen.getByText("Alex owns the lease follow-up.")).toBeTruthy());
-    fireEvent.click(screen.getByText(/Sources · 1/));
-    expect(screen.getByText("Leasing review")).toBeTruthy();
-    expect(screen.getByText("When is it due?")).toBeTruthy();
+  it("opens the Claude chat dock and explains when Claude is not available", async () => {
+    renderDrawer();
+    expect(screen.getByRole("region", { name: "Ask Echo · Claude" })).toBeTruthy();
+    expect(await screen.findByText("Echo AI is available in the Mosaic desktop app.")).toBeTruthy();
+    expect((screen.getByLabelText("Message Echo AI") as HTMLTextAreaElement).disabled).toBe(true);
+  });
+
+  it("closes from the header button", () => {
+    const onClose = renderDrawer();
+    fireEvent.click(screen.getByRole("button", { name: "Close Ask Echo" }));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("resizes with the keyboard within its limits", () => {
+    renderDrawer();
+    const handle = screen.getByRole("separator", { name: "Resize Ask Echo panel" });
+    const start = Number(handle.getAttribute("aria-valuenow"));
+    fireEvent.keyDown(handle, { key: "ArrowLeft" });
+    expect(Number(handle.getAttribute("aria-valuenow"))).toBe(start + 16);
+    fireEvent.keyDown(handle, { key: "End" });
+    expect(handle.getAttribute("aria-valuenow")).toBe("360");
   });
 });

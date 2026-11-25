@@ -55,9 +55,13 @@ export interface BADocument {
   updatedAt: string;
 }
 
+/** General: a lighter project (overview, tasks, reports). Dev: the software-delivery layout. */
+export type BAProjectTemplate = "general" | "dev";
+
 export interface BAProject {
   id: string;
   name: string;
+  template: BAProjectTemplate;
   description: string;
   discoveryNotes: string;
   requirements: BARequirement[];
@@ -66,6 +70,9 @@ export interface BAProject {
   endToEndProcess: BAWorkItem[];
   deployments: BAWorkItem[];
   phases: BAPhase[];
+  /** General-project tasks / action items and timeline (kept when switching type). */
+  generalTasks: BAWorkItem[];
+  generalPhases: BAPhase[];
   documents: BADocument[];
   createdAt: string;
   updatedAt: string;

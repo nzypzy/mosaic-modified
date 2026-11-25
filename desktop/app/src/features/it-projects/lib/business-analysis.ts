@@ -1,4 +1,4 @@
-import type { BAProject, BAWorkspaceState } from "@/features/it-projects/types/business-analysis";
+import type { BAPhase, BAProject, BAProjectTemplate, BAWorkspaceState } from "@/features/it-projects/types/business-analysis";
 
 export const BA_PHASES: Array<{ name: string; deliverables: string[] }> = [
   { name: "Discovery & Elicitation", deliverables: ["Problem statement", "As-Is process map", "Scope cutlines"] },
@@ -9,20 +9,36 @@ export const BA_PHASES: Array<{ name: string; deliverables: string[] }> = [
   { name: "Post-Go-Live & Hypercare", deliverables: ["PIR retrospective", "BAU handover"] },
 ];
 
+export const GENERAL_PHASES: Array<{ name: string; deliverables: string[] }> = [
+  { name: "Initiation", deliverables: ["Objective and scope agreed", "Sponsor / owner confirmed"] },
+  { name: "Planning", deliverables: ["Plan and timeline", "Budget / resources confirmed"] },
+  { name: "Execution", deliverables: ["Work delivered", "Progress updates shared"] },
+  { name: "Monitoring & Control", deliverables: ["Status reviewed", "Changes and issues handled"] },
+  { name: "Closure", deliverables: ["Handover / sign-off", "Lessons learned"] },
+];
+
+export const GENERAL_TASK_FIELDS = ["task", "owner", "dueDate", "status", "priority", "notes"] as const;
+
+export const PROJECT_TEMPLATES: Array<{ value: BAProjectTemplate; label: string; description: string }> = [
+  { value: "general", label: "General", description: "Overview, timeline, tasks / action items and reports" },
+  { value: "dev", label: "Development", description: "Product & sprint backlogs, RTM, design, process and deployment" },
+];
+
+function blankPhases(templates: Array<{ name: string; deliverables: string[] }>): BAPhase[] {
+  return templates.map((phase) => ({ name: phase.name, startDate: "", targetDate: "", deliverables: phase.deliverables.map((label) => ({ label, done: false })) }));
+}
+
 export const BA_MIN_COLUMN_WIDTHS = [100, 220, 100, 115, 240, 280, 110, 140, 150, 220];
 export const DEFAULT_BA_COLUMN_WIDTHS = [110, 240, 110, 125, 260, 300, 120, 160, 175, 240];
 export const EMPTY_BA_STATE: BAWorkspaceState = { projects: [], tableColumnWidths: DEFAULT_BA_COLUMN_WIDTHS };
 
-export function createBAProject(name = "New BA Project"): BAProject {
+export function createBAProject(name = "New project", template: BAProjectTemplate = "general"): BAProject {
   const now = new Date().toISOString();
   return {
-    id: crypto.randomUUID(), name, description: "", discoveryNotes: "", requirements: [], sprintBacklog: [], systemDesign: [], endToEndProcess: [], deployments: [],
-    phases: BA_PHASES.map((phase) => ({
-      name: phase.name,
-      startDate: "",
-      targetDate: "",
-      deliverables: phase.deliverables.map((label) => ({ label, done: false })),
-    })),
+    id: crypto.randomUUID(), name, template, description: "", discoveryNotes: "", requirements: [], sprintBacklog: [], systemDesign: [], endToEndProcess: [], deployments: [],
+    phases: blankPhases(BA_PHASES),
+    generalTasks: [],
+    generalPhases: blankPhases(GENERAL_PHASES),
     documents: [], createdAt: now, updatedAt: now,
   };
 }
@@ -78,18 +94,24 @@ export function normalizeBAState(value: unknown): BAWorkspaceState {
         tasks,
       }];
     });
-    const rawPhases = Array.isArray(item.phases) ? item.phases : [];
-    const phases = BA_PHASES.map((template) => {
-      const phase = rawPhases.find((entry) => Boolean(entry && typeof entry === "object" && (entry as Record<string, unknown>).name === template.name)) as Record<string, unknown> | undefined;
-      const rawDeliverables = Array.isArray(phase?.deliverables) ? phase.deliverables : [];
-      return {
-        name: template.name, startDate: text(phase?.startDate, 20), targetDate: text(phase?.targetDate, 20),
-        deliverables: template.deliverables.map((label) => {
-          const saved = rawDeliverables.find((entry) => Boolean(entry && typeof entry === "object" && (entry as Record<string, unknown>).label === label)) as Record<string, unknown> | undefined;
-          return { label, done: saved?.done === true };
-        }),
-      };
-    });
+    const normalizePhases = (rawValue: unknown, templates: Array<{ name: string; deliverables: string[] }>) => {
+      const rawPhases = Array.isArray(rawValue) ? rawValue : [];
+      return templates.map((template) => {
+        const phase = rawPhases.find((entry) => Boolean(entry && typeof entry === "object" && (entry as Record<string, unknown>).name === template.name)) as Record<string, unknown> | undefined;
+        const rawDeliverables = Array.isArray(phase?.deliverables) ? phase.deliverables : [];
+        return {
+          name: template.name, startDate: text(phase?.startDate, 20), targetDate: text(phase?.targetDate, 20),
+          deliverables: template.deliverables.map((label) => {
+            const saved = rawDeliverables.find((entry) => Boolean(entry && typeof entry === "object" && (entry as Record<string, unknown>).label === label)) as Record<string, unknown> | undefined;
+            return { label, done: saved?.done === true };
+          }),
+        };
+      });
+    };
+    const phases = normalizePhases(item.phases, BA_PHASES);
+    const generalPhases = normalizePhases(item.generalPhases, GENERAL_PHASES);
+    // Projects saved before project types existed were all development projects.
+    const template: BAProjectTemplate = item.template === "general" ? "general" : "dev";
     const rawDocuments = Array.isArray(item.documents) ? item.documents.slice(0, 100) : [];
     const documents = rawDocuments.flatMap((rawDocument) => {
       if (!rawDocument || typeof rawDocument !== "object") return [];
@@ -97,8 +119,9 @@ export function normalizeBAState(value: unknown): BAWorkspaceState {
       return typeof doc.id === "string" ? [{ id: text(doc.id, 40), title: text(doc.title, 200), kind: text(doc.kind, 100), content: text(doc.content, 100_000), updatedAt: text(doc.updatedAt, 40) }] : [];
     });
     return [{
-      id: text(item.id, 40), name: text(item.name, 200), description: text(item.description, 5000),
-      discoveryNotes: text(item.discoveryNotes, 100_000), requirements, phases, documents,
+      id: text(item.id, 40), name: text(item.name, 200), template, description: text(item.description, 5000),
+      discoveryNotes: text(item.discoveryNotes, 100_000), requirements, phases, generalPhases, documents,
+      generalTasks: records(item.generalTasks, [...GENERAL_TASK_FIELDS]),
       sprintBacklog: records(item.sprintBacklog, ["taskName", "module", "priority", "status", "estimatedHours", "actualHours", "blockers"]),
       systemDesign: records(item.systemDesign, ["component", "function", "technology", "dataSource", "integrationPoint", "dependencies"]),
       endToEndProcess: records(item.endToEndProcess, ["step", "phase", "userAction", "systemLogic", "output", "tool"]),

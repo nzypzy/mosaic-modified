@@ -37,3 +37,23 @@ describe("in-app prompt dialog (replaces window.prompt, which Electron does not 
     expect(results).toEqual([null, null]);
   });
 });
+
+function ChoiceHarness({ onResult }: { onResult: (value: unknown) => void }) {
+  const { askWithChoice, dialog } = usePromptDialog();
+  return <div>
+    <button type="button" onClick={() => void askWithChoice({ title: "New IT project", label: "Project name", confirmLabel: "Create project", choices: [{ value: "general", label: "General" }, { value: "dev", label: "Development" }], defaultChoice: "general" }).then(onResult)}>Open with type</button>
+    {dialog}
+  </div>;
+}
+
+describe("prompt dialog with a type choice", () => {
+  it("returns the name and the chosen type", async () => {
+    const results: unknown[] = [];
+    render(<ChoiceHarness onResult={(value) => results.push(value)} />);
+    fireEvent.click(screen.getByText("Open with type"));
+    fireEvent.change(screen.getByLabelText("Project name"), { target: { value: "Portal" } });
+    fireEvent.click(screen.getByLabelText(/Development/));
+    await act(async () => { fireEvent.click(screen.getByText("Create project")); });
+    expect(results).toEqual([{ value: "Portal", choice: "dev" }]);
+  });
+});

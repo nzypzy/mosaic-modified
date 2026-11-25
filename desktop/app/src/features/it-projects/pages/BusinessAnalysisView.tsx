@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Archive, ArrowLeft, ArrowUpRight, Bold, BookOpen, Check, Download, Eye, FilePlus2, FileText, FolderKanban, LayoutGrid, List, ListOrdered, LoaderCircle, MessageSquareMore, MoreHorizontal, Plus, Printer, RefreshCw, Save, Sparkles, Table2, Tags, Trash2, X } from "lucide-react";
 import { usePromptDialog } from "@/components/PromptDialog";
-import { BA_MIN_COLUMN_WIDTHS, createBAProject, DEFAULT_BA_COLUMN_WIDTHS, EMPTY_BA_STATE, nextRequirementId, normalizeBAState, requirementsFromNotes } from "@/features/it-projects/lib/business-analysis";
+import { BA_MIN_COLUMN_WIDTHS, PROJECT_TEMPLATES, createBAProject, DEFAULT_BA_COLUMN_WIDTHS, EMPTY_BA_STATE, nextRequirementId, normalizeBAState, requirementsFromNotes } from "@/features/it-projects/lib/business-analysis";
 import type { ArchivedMeeting } from "@/features/meetings/types/meeting";
 import type { BAProject, BARequirement, BARequirementTask, BAWorkspaceState, BADocument, RequirementCategory, MoscowPriority, VerificationStatus } from "@/features/it-projects/types/business-analysis";
 import { ITProjectSections } from "@/features/it-projects/components/ITProjectSections";
@@ -20,6 +20,7 @@ type GrillSession = { requirementId: string; statement: string; turns: GrillTurn
 const PRE_DOC_TEMPLATES = ["Project Charter", "Business Case", "Business Requirements Document", "Functional Requirements Document", "UAT Test Plan"];
 const POST_DOC_TEMPLATES = ["Stakeholder Sign-Off Certificate", "Production Release Notes", "Post-Implementation Review"];
 const DOC_TEMPLATES = [...PRE_DOC_TEMPLATES, ...POST_DOC_TEMPLATES];
+const GENERAL_DOC_TEMPLATES = ["Project Charter", "Status Report", "Project Closure Report"];
 const categoryColor: Record<RequirementCategory, string> = {
   Functional: "bg-[#EEF4FA] text-[#003366]", "Non-Functional": "bg-[#F3F0F8] text-[#5B3A7A]",
   Technical: "bg-[#EAF5F7] text-[#176B78]", Compliance: "bg-[#FBF4E6] text-[#855A08]", Business: "bg-[#EDF5EF] text-[#356B43]",
@@ -248,7 +249,38 @@ function downloadBlob(blob: Blob, name: string) {
   URL.revokeObjectURL(url);
 }
 
+async function renderGeneralXlsx(project: BAProject) {
+  const { Workbook } = await import("exceljs");
+  const workbook = new Workbook();
+  const styleHeader = (sheet: import("exceljs").Worksheet) => {
+    const row = sheet.getRow(1);
+    row.height = 24;
+    row.eachCell((cell) => { cell.font = { bold: true, color: { argb: "FFFFFFFF" } }; cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF003366" } }; });
+    sheet.eachRow((sheetRow, rowNumber) => { if (rowNumber > 1) sheetRow.alignment = { vertical: "top", wrapText: true }; });
+  };
+  const tasks = workbook.addWorksheet("Tasks", { views: [{ state: "frozen", ySplit: 1 }] });
+  tasks.columns = [{ header: "Task ID", key: "id", width: 12 }, { header: "Task", key: "task", width: 40 }, { header: "Owner", key: "owner", width: 20 }, { header: "Due Date", key: "dueDate", width: 14 }, { header: "Status", key: "status", width: 14 }, { header: "Priority", key: "priority", width: 12 }, { header: "Notes", key: "notes", width: 44 }];
+  project.generalTasks.forEach((item) => tasks.addRow(item));
+  styleHeader(tasks);
+  const timeline = workbook.addWorksheet("Timeline", { views: [{ state: "frozen", ySplit: 1 }] });
+  timeline.columns = [{ header: "Phase", key: "phase", width: 24 }, { header: "Start Date", key: "startDate", width: 14 }, { header: "Target Date", key: "targetDate", width: 14 }, { header: "Deliverables", key: "deliverables", width: 60 }];
+  project.generalPhases.forEach((phase) => timeline.addRow({ phase: phase.name, startDate: phase.startDate, targetDate: phase.targetDate, deliverables: phase.deliverables.map((item) => `${item.done ? "[x]" : "[ ]"} ${item.label}`).join("\n") }));
+  styleHeader(timeline);
+  const open = project.generalTasks.filter((item) => item.status !== "Done");
+  const today = new Date().toISOString().slice(0, 10);
+  const summary = workbook.addWorksheet("Summary");
+  summary.columns = [{ header: "Measure", key: "measure", width: 34 }, { header: "Value", key: "value", width: 22 }];
+  summary.addRows([
+    { measure: "Project", value: project.name }, { measure: "Tasks", value: project.generalTasks.length }, { measure: "Open tasks", value: open.length },
+    { measure: "Overdue tasks", value: open.filter((item) => item.dueDate && item.dueDate < today).length }, { measure: "Done tasks", value: project.generalTasks.length - open.length },
+  ]);
+  styleHeader(summary);
+  const buffer = await workbook.xlsx.writeBuffer();
+  return new Blob([buffer as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+
 async function renderXlsx(project: BAProject) {
+  if (project.template === "general") return renderGeneralXlsx(project);
   const { Workbook } = await import("exceljs");
   const workbook = new Workbook();
   const sheet = workbook.addWorksheet("RTM", { views: [{ state: "frozen", ySplit: 1 }] });
@@ -318,7 +350,15 @@ function meetingNotes(meeting: ArchivedMeeting) {
   return [`Meeting: ${meeting.title}`, `Date: ${meeting.date}`, meeting.summary && `Summary:\n${meeting.summary}`, meeting.meeting_notes && `Notes:\n${meeting.meeting_notes}`, items && `Discussion points:\n${items}`].filter(Boolean).join("\n\n");
 }
 
+function generalTemplateContent(kind: string, project: BAProject) {
+  const tasks = project.generalTasks.map((item) => `${item.id}: ${item.task || "Untitled task"} (${item.status || "Status not set"})${item.owner ? `; owner: ${item.owner}` : ""}${item.dueDate ? `; due ${item.dueDate}` : ""}${item.notes ? `\n${item.notes}` : ""}`).join("\n") || "No tasks have been recorded.";
+  const phases = project.generalPhases.map((phase) => `${phase.name}: ${phase.startDate || "Start date not set"} to ${phase.targetDate || "Target date not set"} (${phase.deliverables.filter((item) => item.done).length}/${phase.deliverables.length} done)`).join("\n");
+  const signoff = kind === "Project Closure Report" ? "\n\nSign-off\nName: ______________________________\nRole: _______________________________\nDate: _______________________________" : "";
+  return `${kind}\n\nProject: ${project.name}\nPrepared: ${new Date().toLocaleDateString()}\n\nObjective and scope\n${project.description || "Add the project objective and scope."}\n\nTimeline\n${phases}\n\nTasks / action items\n${tasks}\n\nNotes and decisions\n${project.discoveryNotes || "Add notes and decisions."}${signoff}`;
+}
+
 function templateContent(kind: string, project: BAProject) {
+  if (project.template === "general") return generalTemplateContent(kind, project);
   const requirements = project.requirements.map((item) => `${item.id} (${item.priority}, ${item.category})\n${item.statement}${item.businessImpact ? `\nBusiness impact: ${item.businessImpact}` : ""}`).join("\n\n") || "No requirements have been recorded.";
   const phases = project.phases.map((phase) => `${phase.name}: ${phase.startDate || "Start date not set"} to ${phase.targetDate || "Target date not set"}`).join("\n");
   const sprint = project.sprintBacklog.map((item) => `${item.id}: ${item.taskName || "Untitled task"} (${item.status || "Status not set"})${item.blockers ? `\nBlockers: ${item.blockers}` : ""}`).join("\n") || "No sprint tasks have been recorded.";
@@ -331,7 +371,7 @@ function templateContent(kind: string, project: BAProject) {
 
 export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], onLoadMeetings }: { userId?: string; meetings?: ArchivedMeeting[]; onLoadMeetings?: () => Promise<ArchivedMeeting[]> }) {
   const { runStructured } = useEchoAI();
-  const { ask, dialog: promptDialog } = usePromptDialog();
+  const { askWithChoice, dialog: promptDialog } = usePromptDialog();
   const [state, setState] = useState<BAWorkspaceState>(EMPTY_BA_STATE);
   const [activeId, setActiveId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -477,9 +517,9 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
   };
 
   const addProject = async () => {
-    const name = await ask({ title: "New IT project", label: "Project name", placeholder: "e.g. Laptop refresh 2027", confirmLabel: "Create project" });
-    if (!name?.trim()) return;
-    const next = createBAProject(name.trim());
+    const result = await askWithChoice({ title: "New IT project", label: "Project name", placeholder: "e.g. Laptop refresh 2027", confirmLabel: "Create project", choices: PROJECT_TEMPLATES, defaultChoice: "general" });
+    if (!result?.value.trim()) return;
+    const next = createBAProject(result.value.trim(), result.choice === "dev" ? "dev" : "general");
     setState((current) => ({ ...current, projects: [...current.projects, next] }));
     setActiveId(next.id);
   };
@@ -800,7 +840,7 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
       <button className={`${secondaryClass} justify-start p-4`} onClick={() => window.print()}><Printer size={18} /><span className="text-left"><strong className="block">Print project report</strong><span className="mt-1 block text-xs font-normal text-slate-700">Open the browser print dialog for a PDF copy</span></span></button>
     </div>
     <section className="space-y-3 border border-slate-200 bg-white p-4"><div><h3 className="font-semibold text-[#003366]">Project documents</h3><p className="mt-1 text-xs text-slate-600">Create editable drafts from project information.</p></div>
-      <div className="grid gap-2 sm:grid-cols-[220px_minmax(140px,1fr)_auto]"><label className="sr-only" htmlFor="ba-document-template">Document template</label><select id="ba-document-template" className={inputClass} value={selectedTemplate} onChange={(event) => setSelectedTemplate(event.target.value)}><optgroup label="Before delivery">{PRE_DOC_TEMPLATES.map((value) => <option key={value}>{value}</option>)}</optgroup><optgroup label="After delivery">{POST_DOC_TEMPLATES.map((value) => <option key={value}>{value}</option>)}</optgroup></select><label className="sr-only" htmlFor="ba-document-title">New document title</label><input id="ba-document-title" className={inputClass} value={documentTitle} onChange={(event) => setDocumentTitle(event.target.value)} placeholder="Optional title" /><button className={buttonClass} onClick={addDocument}><FilePlus2 size={15} />Create draft</button></div>
+      <div className="grid gap-2 sm:grid-cols-[220px_minmax(140px,1fr)_auto]"><label className="sr-only" htmlFor="ba-document-template">Document template</label><select id="ba-document-template" className={inputClass} value={selectedTemplate} onChange={(event) => setSelectedTemplate(event.target.value)}>{project.template === "general" ? GENERAL_DOC_TEMPLATES.map((value) => <option key={value}>{value}</option>) : <><optgroup label="Before delivery">{PRE_DOC_TEMPLATES.map((value) => <option key={value}>{value}</option>)}</optgroup><optgroup label="After delivery">{POST_DOC_TEMPLATES.map((value) => <option key={value}>{value}</option>)}</optgroup></>}</select><label className="sr-only" htmlFor="ba-document-title">New document title</label><input id="ba-document-title" className={inputClass} value={documentTitle} onChange={(event) => setDocumentTitle(event.target.value)} placeholder="Optional title" /><button className={buttonClass} onClick={addDocument}><FilePlus2 size={15} />Create draft</button></div>
       {project.documents.length === 0 ? <p className="border border-dashed border-slate-300 p-4 text-sm text-slate-600">No project documents yet.</p> : view === "list" ? <div className="overflow-x-auto border border-slate-200"><table className="w-full min-w-[760px] border-collapse text-left text-xs"><thead className="bg-slate-50 text-[10px] uppercase text-slate-600"><tr>{["Title", "Type", "Last updated", "Draft", ""].map((label, index) => <th key={index} className="border border-slate-200 px-3 py-2">{label}</th>)}</tr></thead><tbody>{project.documents.map((item, index) => <tr key={item.id} className={index % 2 ? "bg-slate-50/50" : "bg-white"}><td className="w-48 border border-slate-200 p-2"><label className="sr-only" htmlFor={`doc-title-${item.id}`}>Document title</label><input id={`doc-title-${item.id}`} className={`${inputClass} font-semibold`} value={item.title} onChange={(event) => updateProject((current) => ({ ...current, documents: current.documents.map((doc) => doc.id === item.id ? { ...doc, title: event.target.value, updatedAt: new Date().toISOString() } : doc) }))} /></td><td className="border border-slate-200 px-3 py-2">{item.kind}</td><td className="border border-slate-200 px-3 py-2">{item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : ""}</td><td className="min-w-[320px] border border-slate-200 p-2"><label className="sr-only" htmlFor={`doc-content-${item.id}`}>Document content</label><textarea id={`doc-content-${item.id}`} className={`${inputClass} min-h-20 resize-y leading-5`} value={item.content} onChange={(event) => updateProject((current) => ({ ...current, documents: current.documents.map((doc) => doc.id === item.id ? { ...doc, content: event.target.value, updatedAt: new Date().toISOString() } : doc) }))} /></td><td className="border border-slate-200 px-2 py-2"><button className={secondaryClass} onClick={() => void exportDocument(item)}><Download size={15} />Word</button></td></tr>)}</tbody></table></div> : <div className="space-y-3">{project.documents.map((item) => <article key={item.id} className="border border-slate-200 p-3"><div className="mb-2 flex flex-wrap items-center justify-between gap-2"><div className="flex min-w-0 flex-1 gap-3"><label className="sr-only" htmlFor={`doc-title-${item.id}`}>Document title</label><input id={`doc-title-${item.id}`} className={`${inputClass} max-w-xl font-semibold`} value={item.title} onChange={(event) => updateProject((current) => ({ ...current, documents: current.documents.map((doc) => doc.id === item.id ? { ...doc, title: event.target.value, updatedAt: new Date().toISOString() } : doc) }))} /><span className="self-center text-xs text-slate-500">{item.kind} · {item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : ""}</span></div><button className={secondaryClass} onClick={() => void exportDocument(item)}><Download size={15} />Download Word</button></div><label className="sr-only" htmlFor={`doc-content-${item.id}`}>Document content</label><textarea id={`doc-content-${item.id}`} className={`${inputClass} min-h-40 resize-y leading-6`} value={item.content} onChange={(event) => updateProject((current) => ({ ...current, documents: current.documents.map((doc) => doc.id === item.id ? { ...doc, content: event.target.value, updatedAt: new Date().toISOString() } : doc) }))} /></article>)}</div>}
     </section>
   </section>;
@@ -820,13 +860,14 @@ export function BusinessAnalysisView({ userId, meetings: initialMeetings = [], o
       <div className="ba-no-print flex flex-wrap items-center gap-2">
         {!project && <button className={`${secondaryClass} min-h-8 bg-white px-2.5 py-1 text-[11px]`} onClick={addProject}><Plus size={14} />New project</button>}
         {project && <div ref={projectMenuRef} className="relative"><button ref={projectMenuButtonRef} type="button" aria-label="Project options" title="Project options" aria-haspopup="menu" aria-expanded={projectMenuOpen} className="inline-flex h-8 w-8 items-center justify-center border border-slate-300 bg-white text-[#003366] hover:border-[#003366] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]" onClick={() => setProjectMenuOpen((open) => !open)}><MoreHorizontal aria-hidden="true" size={16} /></button>{projectMenuOpen && <div role="menu" aria-label={`${project.name} options`} className="absolute right-0 top-full z-30 mt-1 min-w-40 border border-slate-200 bg-white p-1 shadow-md"><button type="button" role="menuitem" className="flex min-h-8 w-full items-center gap-2 px-2 text-left text-xs text-[#9B3030] hover:bg-red-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#C9A84C]" onClick={() => { setProjectMenuOpen(false); setDeleteProjectError(""); setDeleteProjectOpen(true); }}><Trash2 aria-hidden="true" size={13} />Delete project</button></div>}</div>}
+        {project && <label className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#31577D]">Type<select aria-label="Project type" value={project.template} onChange={(event) => { const template = event.target.value === "dev" ? "dev" : "general"; updateProject((current) => ({ ...current, template })); setSelectedTemplate((current) => (template === "general" ? GENERAL_DOC_TEMPLATES : DOC_TEMPLATES).includes(current) ? current : "Project Charter"); }} className="min-h-8 border border-slate-300 bg-white px-2 text-[11px] text-[#003366]">{PROJECT_TEMPLATES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></label>}
         {saveState !== "saved" && <span className="mr-1 text-xs text-slate-700" role="status">{saveState === "saving" ? "Saving" : "Save failed"}</span>}
         <button className={`${secondaryClass} min-h-8 bg-white px-2.5 py-1 text-[11px]`} onClick={saveNow}><Save size={14} />Save</button>
       </div>
     </header>
 
     {!project ? state.projects.length === 0 ? <section className="border border-dashed border-slate-300 bg-white px-5 py-12 text-center"><FolderKanban aria-hidden="true" className="mx-auto h-6 w-6 text-[#31577D]" /><h2 className="mt-3 text-base font-semibold text-[#003366]">Create your first IT project</h2><p className="mx-auto mt-1 max-w-md text-sm text-slate-600">Track its timeline, backlogs, architecture, process, and release plan in one workspace.</p></section> : <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {state.projects.map((item) => <button key={item.id} type="button" onClick={() => setActiveId(item.id)} className="group min-h-40 border border-slate-200 bg-white p-4 text-left transition-colors hover:border-[#C9A84C] hover:bg-[#FFFCFB] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]"><span className="flex h-full flex-col"><span className="flex items-start justify-between gap-3"><span className="flex h-9 w-9 items-center justify-center border border-[#C9A84C]/60 bg-[#FBF7E9] text-[#003366]"><FolderKanban aria-hidden="true" className="h-4 w-4" /></span><ArrowUpRight aria-hidden="true" className="h-4 w-4 text-slate-400 transition-colors group-hover:text-[#003366]" /></span><span className="mt-4 text-base font-semibold text-[#003366]">{item.name}</span><span className="mt-1 text-xs text-slate-500">{item.requirements.length} feature{item.requirements.length === 1 ? "" : "s"} · {item.sprintBacklog.length} sprint tasks · {item.documents.length} report{item.documents.length === 1 ? "" : "s"}</span><span className="mt-auto pt-4 text-[10px] font-semibold uppercase tracking-wide text-[#31577D]">Open project</span></span></button>)}
+        {state.projects.map((item) => <button key={item.id} type="button" onClick={() => setActiveId(item.id)} className="group min-h-40 border border-slate-200 bg-white p-4 text-left transition-colors hover:border-[#C9A84C] hover:bg-[#FFFCFB] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#003366]"><span className="flex h-full flex-col"><span className="flex items-start justify-between gap-3"><span className="flex h-9 w-9 items-center justify-center border border-[#C9A84C]/60 bg-[#FBF7E9] text-[#003366]"><FolderKanban aria-hidden="true" className="h-4 w-4" /></span><ArrowUpRight aria-hidden="true" className="h-4 w-4 text-slate-400 transition-colors group-hover:text-[#003366]" /></span><span className="mt-4 text-base font-semibold text-[#003366]">{item.name}</span><span className="mt-1 text-xs text-slate-500">{item.template === "general" ? `${item.generalTasks.length} task${item.generalTasks.length === 1 ? "" : "s"}` : `${item.requirements.length} feature${item.requirements.length === 1 ? "" : "s"} · ${item.sprintBacklog.length} sprint tasks`} · {item.documents.length} report{item.documents.length === 1 ? "" : "s"}</span><span className="mt-2 inline-flex w-fit border border-slate-200 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#31577D]">{item.template === "general" ? "General" : "Development"}</span><span className="mt-auto pt-4 text-[10px] font-semibold uppercase tracking-wide text-[#31577D]">Open project</span></span></button>)}
     </section> : <>
       <ITProjectSections project={project} updateProject={updateProject} updateRequirement={updateRequirement} addRequirement={addRequirement} onRequestDeleteRequirement={requestDeleteRequirement} onViewRequirement={setDetailRequirementId} reports={reportsContent} tableColumnWidths={state.tableColumnWidths} resizeColumn={resizeColumn} filterCategory={filterCategory} filterPriority={filterPriority} onFilterCategoryChange={setFilterCategory} onFilterPriorityChange={setFilterPriority} renderRequirementCard={(requirement, headerContent) => <RequirementCard
         requirement={requirement} headerContent={headerContent} onUpdate={updateRequirement} onRequestDelete={requestDeleteRequirement}
