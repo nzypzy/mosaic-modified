@@ -298,7 +298,7 @@ body :where(h1, h2, h3, h4) {
 
 :root:not([data-theme="light"]) .vscode-workbench [class*="text-[#003366]"],
 :root:not([data-theme="light"]) .vscode-workbench [class*="text-brand-blue"],
-:root:not([data-theme="light"]) .vscode-workbench [class*="text-[#1b1d1e]"],
+:root:not([data-theme="light"]) .vscode-workbench [class*="text-[#1b1d1e]" i],
 :root:not([data-theme="light"]) .vscode-workbench [class*="text-[#181D1E]"],
 :root:not([data-theme="light"]) .vscode-workbench [class*="text-slate-800"],
 :root:not([data-theme="light"]) .vscode-workbench [class*="text-slate-700"],

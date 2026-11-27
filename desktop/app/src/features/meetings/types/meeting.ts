@@ -58,6 +58,9 @@ export interface ArchivedMeeting {
   items: DiscussionItem[];
   action_items?: MeetingActionItem[];
   transcript?: string;
+  /** "scheduled" = set up in the Meetings module and not recorded yet. Archives have no status. */
+  status?: "scheduled" | "archived";
+  notes?: string;
   meeting_notes?: string;
   recording_type?: "audio" | "video";
   recording_format?: string;

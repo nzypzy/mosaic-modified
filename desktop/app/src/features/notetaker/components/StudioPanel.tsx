@@ -745,8 +745,9 @@ export function StudioPanel({
 
             {/* Missing Shared Audio or Cancelled Alert */}
             {recorder.captureIssue && recorder.captureIssue !== "screen_share_ended" && (
-              <div role="alert" className="border border-amber-300 border-l-4 border-l-[#0078D4] bg-amber-50 px-4 py-3 text-sm text-slate-700">
-                <p className="font-semibold text-[#003366]">{recorder.captureIssue === "missing_shared_audio" ? "Meeting audio wasn’t shared" : "Nothing was shared"}</p>
+              <div role="alert" className="relative border border-amber-300 border-l-4 border-l-[#0078D4] bg-amber-50 px-4 py-3 text-sm text-slate-700">
+                <button type="button" onClick={recorder.dismissCaptureIssue} aria-label="Close" title="Close" className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center text-slate-500 hover:bg-amber-100 hover:text-slate-800 cursor-pointer">×</button>
+                <p className="pr-6 font-semibold text-[#003366]">{recorder.captureIssue === "missing_shared_audio" ? "Meeting audio wasn’t shared" : "Nothing was shared"}</p>
                 <p className="mt-1 text-xs leading-relaxed">Select the meeting tab/window and make sure to check “Share audio” in the browser prompt. Recording has not started.</p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button type="button" onClick={() => void recorder.start()} className="bg-[#003366] px-3 py-2 text-xs font-semibold text-white cursor-pointer">Try Again</button>

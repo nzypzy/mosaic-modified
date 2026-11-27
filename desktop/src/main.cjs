@@ -562,6 +562,34 @@ function themeBackgroundColor() {
 
 function registerThemeBridge() {
   nativeTheme.themeSource = settings.themePreference;
+  // Local colour themes: <userData>/themes/<id>.css, first line "/* Mosaic theme: name=...; base=dark|light */".
+  // They stay in the user's profile (never in the repository).
+  const themesDirectory = () => path.join(app.getPath("userData"), "themes");
+  const isTrusted = (event) => Boolean(mainWindow && event.sender === mainWindow.webContents && isAppOrigin(event.senderFrame?.url || ""));
+  ipcMain.handle("mosaic:list-local-themes", (event) => {
+    if (!isTrusted(event)) return [];
+    const directory = themesDirectory();
+    fs.mkdirSync(directory, { recursive: true });
+    return fs.readdirSync(directory, { withFileTypes: true })
+      .filter((entry) => entry.isFile() && entry.name.toLowerCase().endsWith(".css"))
+      .slice(0, 20)
+      .flatMap((entry) => {
+        const id = entry.name.slice(0, -4).toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40);
+        if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(id)) return [];
+        const file = path.join(directory, entry.name);
+        if (fs.statSync(file).size > 200_000) return [];
+        const css = fs.readFileSync(file, "utf8");
+        const header = /\/\*\s*Mosaic theme:([^*]*)\*\//i.exec(css)?.[1] || "";
+        const name = /name\s*=\s*([^;]+)/i.exec(header)?.[1]?.trim().slice(0, 60) || id;
+        const base = /base\s*=\s*light/i.test(header) ? "light" : "dark";
+        return [{ id, name, base, css }];
+      });
+  });
+  ipcMain.handle("mosaic:open-local-themes-folder", async (event) => {
+    if (!isTrusted(event)) return false;
+    fs.mkdirSync(themesDirectory(), { recursive: true });
+    return (await shell.openPath(themesDirectory())) === "";
+  });
   nativeTheme.on("updated", () => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.setBackgroundColor(themeBackgroundColor());
   });

@@ -974,6 +974,7 @@ export default function Home() {
         ...(targetListId ? { list_id: targetListId } : {}),
         ...(options?.idempotencyKey ? { idempotency_key: options.idempotencyKey } : {}),
         is_confidential: isConfidential,
+        status: "archived",
       };
       const res = await saveMeeting(payloadMeta, momItems, actionItems, combinedMeetingSummary, otherDiscussions, transcript, additionalMeetingNotes);
       const newMeetingId = res.meeting_id || `MOM-${Date.now()}`;
@@ -1010,6 +1011,7 @@ export default function Home() {
         is_confidential: isConfidential,
       };
       setArchivedMeetings((prev) => [newRecord, ...prev.filter((m) => m.id !== newMeetingId)]);
+      setMetadata((current: Record<string, unknown>) => ({ ...current, meeting_id: undefined }));
       setSelectedMeetingId(newMeetingId);
       const personalListId = typeof window !== "undefined" ? localStorage.getItem("project_echo_personal_list_id") || undefined : undefined;
       fetchMeetings(undefined, personalListId).then((data) => {
@@ -1278,6 +1280,13 @@ export default function Home() {
               <MeetingsView
                 meetings={archivedMeetings}
                 userEmail={authUser?.email}
+                onMeetingsChanged={async () => {
+                  try {
+                    const personalListId = typeof window !== "undefined" ? localStorage.getItem("project_echo_personal_list_id") || undefined : undefined;
+                    const data = await fetchMeetings(undefined, personalListId);
+                    setArchivedMeetings(Array.isArray(data.meetings) ? data.meetings : []);
+                  } catch { /* keep the current list */ }
+                }}
                 selectedMeetingId={selectedMeetingId}
                 onSelectMeeting={(meetingId) => setSelectedMeetingId(meetingId)}
                 onSelectMeetingSpace={async (spaceId) => {
@@ -1567,6 +1576,48 @@ export default function Home() {
                     onRecordingStop={handleRecordingStop}
                     meetingDetails={(
                       <div className="space-y-2 p-2.5">
+                          {/* Scheduled meeting picker (set up in the Meetings module) */}
+                          <div>
+                            <label htmlFor="notetaker-scheduled-meeting" className="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-0.5">
+                              Scheduled meeting
+                            </label>
+                            <select
+                              id="notetaker-scheduled-meeting"
+                              aria-label="Scheduled meeting"
+                              value={metadata.meeting_id || ""}
+                              onChange={(event) => {
+                                const picked = archivedMeetings.find((m) => m.id === event.target.value && m.status === "scheduled");
+                                if (!picked) {
+                                  setMetadata({ ...metadata, meeting_id: undefined });
+                                  return;
+                                }
+                                const knownVenue = (VENUE_OPTIONS as string[]).includes(picked.location);
+                                autoMeetingNameRef.current = null;
+                                setMetadata({
+                                  ...metadata,
+                                  meeting_id: picked.id,
+                                  client_name: picked.title,
+                                  date: picked.date || metadata.date,
+                                  start_time: picked.start_time || metadata.start_time,
+                                  end_time: picked.end_time || metadata.end_time,
+                                  meeting_type: picked.meeting_type || metadata.meeting_type,
+                                  location: knownVenue ? picked.location : "Other / Custom...",
+                                  custom_location: knownVenue ? "" : picked.location || "",
+                                });
+                              }}
+                              className="w-full border border-slate-200 bg-white px-2 py-1 text-xs text-slate-800 focus:outline-none focus:border-[#C9AB4C]"
+                            >
+                              <option value="">No scheduled meeting (enter details below)</option>
+                              {archivedMeetings
+                                .filter((m) => m.status === "scheduled")
+                                .map((m) => (
+                                  <option key={m.id} value={m.id}>
+                                    {m.title} · {m.date}{m.start_time ? ` ${m.start_time}` : ""}
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+
                           {/* Row 1: Meeting Name */}
                           <div>
                             <label className="block text-[9px] font-bold uppercase tracking-wider text-slate-500 mb-0.5">

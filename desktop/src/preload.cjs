@@ -48,6 +48,8 @@ contextBridge.exposeInMainWorld("mosaicDesktop", Object.freeze({
   respondToCodexApproval: (id, accepted) => ipcRenderer.invoke("mosaic:codex-approval", id, accepted),
   runClaudeStructured: (prompt, model) => ipcRenderer.invoke("mosaic:claude-structured", prompt, model),
   setNativeTheme: (preference) => ipcRenderer.invoke("mosaic:set-native-theme", preference),
+  listLocalThemes: () => ipcRenderer.invoke("mosaic:list-local-themes"),
+  openLocalThemesFolder: () => ipcRenderer.invoke("mosaic:open-local-themes-folder"),
   getClickUpStatus: () => ipcRenderer.invoke("mosaic:clickup-status"),
   getClickUpSnapshot: () => ipcRenderer.invoke("mosaic:clickup-snapshot"),
   saveClickUpToken: (token) => ipcRenderer.invoke("mosaic:clickup-save-token", token),

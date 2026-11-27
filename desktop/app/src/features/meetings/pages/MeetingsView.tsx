@@ -46,6 +46,7 @@ import { useEchoAI } from "@/features/ask-echo/components/EchoAI";
 import { QuickAddTaskModal } from "@/components/QuickAddTaskModal";
 import { EmailMeetingModal } from "@/features/meetings/components/EmailMeetingModal";
 import { MoveMeetingModal } from "@/features/meetings/components/MoveMeetingModal";
+import { ScheduleMeetingModal } from "@/features/meetings/components/ScheduleMeetingModal";
 import { DiscoverTopicsModal } from "@/features/meetings/components/DiscoverTopicsModal";
 import type { DiscoveredTopicItem } from "@/app/api/discover-topics/route";
 import { formatEchoDate } from "@/lib/dateUtils";
@@ -209,6 +210,7 @@ interface MeetingsViewProps {
   onSelectMeetingSpace?: (spaceId: string) => void;
   userEmail?: string;
   canExport?: boolean;
+  onMeetingsChanged?: () => void;
 }
 
 export function MeetingsView({
@@ -222,12 +224,14 @@ export function MeetingsView({
   onNavigateToTasks,
   onSelectMeetingSpace,
   userEmail,
-  canExport = true
+  canExport = true,
+  onMeetingsChanged,
 }: MeetingsViewProps) {
   const { runStructured } = useEchoAI();
   // Search & Filter state
   const [searchFilter, setSearchFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState<"All" | "Internal" | "External" | "Archives">("All");
+  const [showSchedule, setShowSchedule] = useState(false);
   const [meetingSpaces, setMeetingSpaces] = useState<Array<{ id: string; name: string; teamName: string }>>([]);
   const [selectedMeetingSpace, setSelectedMeetingSpace] = useState("__all__");
   const [personalListId, setPersonalListId] = useState<string>("");
@@ -260,6 +264,9 @@ export function MeetingsView({
   useEffect(() => {
     if (currentMeeting) {
       setActiveMeeting(JSON.parse(JSON.stringify(currentMeeting)));
+    } else {
+      // Nothing left to show (e.g. the last meeting was deleted): clear the open record.
+      setActiveMeeting(null);
     }
   }, [selectedMeetingId, meetings]);
 
@@ -551,8 +558,14 @@ export function MeetingsView({
     data: {},
   });
 
+  // Scheduled meetings are listed separately, until they are recorded.
+  const scheduledList = meetings
+    .filter((m) => m.status === "scheduled")
+    .sort((a, b) => `${a.date} ${a.start_time || ""}`.localeCompare(`${b.date} ${b.start_time || ""}`));
+
   // Filter master list
   const filteredList = meetings.filter((m) => {
+    if (m.status === "scheduled") return false;
     const matchesSearch =
       m.title.toLowerCase().includes(searchFilter.toLowerCase()) ||
       m.location.toLowerCase().includes(searchFilter.toLowerCase()) ||
@@ -900,6 +913,7 @@ export function MeetingsView({
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
+          <button type="button" onClick={() => setShowSchedule(true)} className="inline-flex items-center gap-1.5 border border-[#003366] bg-[#003366] px-3 py-1.5 font-semibold text-white hover:bg-[#174778]">+ Schedule meeting</button>
           {/* Workspace filters are only available in the hosted app. */}
           {!desktopMode && <>
           {/* Space Filter */}
@@ -964,11 +978,28 @@ export function MeetingsView({
         </div>
       </div>
 
+      {showSchedule && <ScheduleMeetingModal onClose={() => setShowSchedule(false)} onScheduled={() => onMeetingsChanged?.()} />}
+
       {/* Master-Detail Split Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         
         {/* LEFT MASTER PANE (4 cols) */}
         <div className="lg:col-span-4 space-y-3 bg-[#FFFCFB] border border-gray-200/90 rounded-none p-4 shadow-2xs">
+          {/* Scheduled meetings */}
+          {scheduledList.length > 0 && (
+            <div className="space-y-1.5 border border-[#C9AB4C]/50 bg-[#FBF7E9] p-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#003366]">Scheduled ({scheduledList.length})</p>
+              {scheduledList.map((m) => (
+                <div key={m.id} className="border border-gray-200 bg-white px-2.5 py-2 text-xs">
+                  <div className="font-semibold text-[#1b1d1e]">{m.title}</div>
+                  <div className="mt-0.5 text-[11px] text-gray-500">
+                    {formatEchoDate(m.date)}{m.start_time ? ` · ${m.start_time}${m.end_time ? `–${m.end_time}` : ""}` : ""} · {m.meeting_type}{m.location ? ` · ${m.location}` : ""}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Search Box */}
           <div className="relative">
             <Search size={14} className="absolute left-3 top-2.5 text-gray-400" />
